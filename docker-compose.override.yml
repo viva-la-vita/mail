@@ -1,0 +1,20 @@
+services:
+  front:
+    volumes:
+      - ./nginx:/overrides:ro
+
+  imap:
+    volumes:
+      - ./dovecot:/overrides:ro
+
+  smtp:
+    volumes:
+      - ./postfix:/overrides:ro
+
+  antispam:
+    volumes:
+      - ./rspamd:/etc/rspamd/override.d:ro
+
+  webmail:
+    volumes:
+      - ./roundcube:/overrides:ro

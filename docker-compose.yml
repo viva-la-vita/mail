@@ -1,0 +1,142 @@
+version: '2.2'
+
+services:
+  resolver:
+    image: mailu/unbound:1.9
+    env_file: .env
+    restart: always
+    networks:
+      default:
+        ipv4_address: 192.168.203.254
+
+  front:
+    image: mailu/nginx:1.9
+    restart: always
+    env_file: .env
+    logging:
+      driver: json-file
+    ports:
+      - 6001:80
+      - 6000:443
+      - 25:25 # SMTP
+      - 465:465 # SMTPS
+      - 587:587 # SMTP Client
+      - 110:110 # POP3
+      - 995:995 # POP3S
+      - 143:143 # IMAP
+      - 993:993 # IMAPS
+    volumes:
+      - certs:/certs
+    depends_on:
+      - resolver
+    dns:
+      - 192.168.203.254
+
+  admin:
+    image: mailu/admin:1.9
+    restart: always
+    env_file: .env
+    volumes:
+      - data:/data
+      - dkim:/dkim
+    depends_on:
+      - redis
+      - resolver
+    dns:
+      - 192.168.203.254
+
+  imap:
+    image: mailu/dovecot:1.9
+    restart: always
+    env_file: .env
+    volumes:
+      - mail:/mail
+    depends_on:
+      - front
+      - resolver
+    dns:
+      - 192.168.203.254
+
+  smtp:
+    image: mailu/postfix:1.9
+    restart: always
+    env_file: .env
+    volumes:
+      - mailqueue:/queue
+    depends_on:
+      - front
+      - resolver
+    dns:
+      - 192.168.203.254
+
+  antispam:
+    image: mailu/rspamd:1.9
+    hostname: antispam
+    restart: always
+    env_file: .env
+    volumes:
+      - filter:/var/lib/rspamd
+    depends_on:
+      - front
+      - resolver
+    dns:
+      - 192.168.203.254
+
+  webmail:
+    image: mailu/roundcube:1.9
+    restart: always
+    env_file: .env
+    volumes:
+      - webmail:/data
+    depends_on:
+      - imap
+      - resolver
+    dns:
+      - 192.168.203.254
+
+  # External dependencies
+  redis:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - redis:/data
+    depends_on:
+      - resolver
+    dns:
+      - 192.168.203.254
+
+  mysql:
+    image: mysql:5.7
+    restart: always
+    expose:
+      - 3306
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PW}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PW}
+    volumes:
+      - mysql:/var/lib/mysql
+    depends_on:
+      - resolver
+    dns:
+      - 192.168.203.254
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.203.0/24
+
+volumes:
+  certs:
+  data:
+  dkim:
+  mail:
+  mailqueue:
+  filter:
+  webmail:
+  redis:
+  mysql:
