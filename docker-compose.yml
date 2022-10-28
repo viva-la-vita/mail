@@ -16,8 +16,8 @@ services:
     logging:
       driver: json-file
     ports:
-      - 6001:80
-      - 6000:443
+      - 6000:80
+      - 6001:443
       - 25:25 # SMTP
       - 465:465 # SMTPS
       - 587:587 # SMTP Client
@@ -25,8 +25,6 @@ services:
       - 995:995 # POP3S
       - 143:143 # IMAP
       - 993:993 # IMAPS
-    volumes:
-      - certs:/certs
     depends_on:
       - resolver
     dns:
